@@ -1,0 +1,371 @@
+<apex:component controller="customAttachmentCtrl" access="global">
+	<apex:attribute name="attachmentParentId" assignTo="{!parentId}" description="This is parent id of the attachment to make it generic
+																			for all standard and custom objects"
+					type="String" access="global" required="true"/>
+					
+	<c:ExternalLibraries />
+	<style>
+		.custom-file-input::-webkit-file-upload-button {
+		  visibility: hidden;
+		}
+		.custom-file-input::before {
+		  content: 'Browse';
+		  display: inline-block;
+		  background: -webkit-linear-gradient(top, #f9f9f9, #e3e3e3);
+		  border: 1px solid #999;
+		  border-radius: 3px;
+		  padding: 5px 8px;
+		  outline: none;
+		  white-space: nowrap;
+		  -webkit-user-select: none;
+		  cursor: pointer;
+		  text-shadow: 1px 1px #fff;
+		  font-weight: 700;
+		  font-size: 10pt;
+		}
+		.custom-file-input:hover::before {
+		  border-color: black;
+		}
+		.custom-file-input:active::before {
+		  background: -webkit-linear-gradient(top, #e3e3e3, #f9f9f9);
+		}
+		
+		
+		 .popupBackground {
+            /* Background color */
+            background-color:black;
+            opacity: 0.20;
+            filter: alpha(opacity = 20);
+        
+            /* Dimensions */
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 998;
+            position: fixed;
+            
+            /* Mouse */
+            cursor:wait;
+        }
+        
+        
+         .PopupPanel {
+            /* Background color */
+           
+            
+     
+            /* Dimensions */
+            left: 25%;
+            width: 50%;
+           
+            top: 50%;
+            height: 50px;
+            margin-top: -25px;
+            z-index: 999;
+            position: fixed;
+            
+            /* Mouse */
+            cursor:pointer;
+        }
+	</style>	
+	
+	<div id="ngApp">
+		<div ng-controller="customAttachmentsAppCtrl" id="ngController">
+			<alert ng-if="isSuccessful && !isLoading" type="success" close="closeAlert($index)">Attachments added successfully !</alert>
+			<div ng-if="isLoading" class="popupBackground" style="-webkit-background-size: cover;" /> 
+   			<div ng-if="isLoading" class="PopupPanel">
+   	 			<progressbar class="progress-striped active" max="max" value="singleFile" type="info">Uploading File {{singleFile}} of {{max}}...</progressbar>    
+  			</div>
+			<div ng-init="isLoading=true" ng-if="!isLoading" class="container-fluid">
+				<div class="row">
+					<div class="col-md-12">
+						<div class="panel panel-default border-add">
+							<div class="panel-heading">
+								File Attachment
+							</div>
+							<div class="panel-body">
+								<div class="table-responsive">
+									<table class="table table-bordered">
+										<thead>
+											<tr>
+												<th>
+													File Name
+												</th>
+												<th>
+													File Type
+												</th>												
+												<th>
+													Description
+												</th>												
+												<th>
+													Size
+												</th>
+											</tr>
+										</thead>
+										<tbody>											
+											<tr ng-repeat="singleFile in fileList">
+												<td>
+													{{singleFile.name}}
+												</td>
+												<td>
+													{{singleFile.type}}
+												</td>																							
+												<td>
+													<textArea class="attachDesc form-control" placeHolder="Please add the description"/>
+												</td>												
+												<td>
+													{{singleFile.size}}
+												</td>												
+											</tr>
+										</tbody>		
+									</table>
+									
+								</div>
+							</div>
+							<div class="panel-footer">
+								<div class="row">
+									<div class="col-md-6">										
+										<input type="file" multiple="true" data-icon="false" data-buttonName="btn-success" data-input="false" ng-model="fileObject" id="multiselect" class="filestyle" onchange="angular.element(this).scope().updateTable()"/>																																																					
+									</div>
+									<div class="col-md-6">
+										<span>
+											<input type="button" multiple="true" ng-model="fileObject"  value="Save" class="pull-right btn btn-success" ng-click="uploadFiles()"/>
+										</span>
+										<!-- <span>										
+											<input type="button" style="margin-right: 20px;" value="Add Record Only" class="pull-right btn btn-success" ng-click="createCustomFileRecord()"/>
+										</span> -->
+										<span>										
+											<input type="button" style="margin-right: 20px;" value="Cancel/Back" class="pull-right btn btn-success" onclick= "backToParent();"/>
+										</span>										
+									</div>										
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+		
+	
+	
+    
+	
+		
+	<script>
+			var j$ = jQuery.noConflict();
+			
+			function backToParent(){
+					window.location.href = '/'+'{!parentId}';
+			}
+			function recTypeChange(){
+				console.log('picklist value is changed');
+			}
+			var customAttachmentsApp = angular.module('customAttachmentApp',['ui.bootstrap']);
+			customAttachmentsApp.controller('customAttachmentsAppCtrl',function($q,$scope){
+			$scope.fileList = [];
+			$scope.recordTypePicklist = [];	
+			$scope.documentGroupPicklist = [];
+			$scope.customFileObjectList = [];
+			$scope.isLoading = false;
+			$scope.FileName;
+			$scope.isSuccessful = false;
+			$scope.onlyCustomFiles = [];
+			$scope.customFiles = [];
+			//fetchRecordTypes();
+			$scope.setLoading = function(loading){
+				console.log('into set loading---->>>',loading);
+				$scope.isLoading = loading;
+			}	
+			
+			
+			
+				
+				
+				 $scope.closeAlert = function(index) {
+    				$scope.isSuccessful=false;
+  				 };
+				
+					$scope.updateTable = function(){
+						$scope.$apply(function(){
+							$scope.filesFromInput = j$('#multiselect').get(0).files;
+							for(var i=0 ;i<$scope.filesFromInput.length ; i++){
+								$scope.singleFile = {
+									'name':$scope.filesFromInput[i].name,
+									'type':$scope.filesFromInput[i].type,
+									'size':$scope.filesFromInput[i].size/1000 + 'K'
+								};										
+								$scope.fileList.push($scope.singleFile);	
+										
+							}	
+							var recTypes = j$('.recType');
+												
+							console.log('$scope.fileList---------->>>>',$scope.fileList);
+						});	
+						
+											
+					};
+					
+					$scope.createCustomFileRecord = function(){
+						
+							$scope.customFileWithoutAttachment = {
+								'name' : '',
+								'type':'',
+								'size':''
+								
+							};								
+							$scope.fileList.push($scope.customFileWithoutAttachment);
+							$scope.onlyCustomFiles.push($scope.customFileWithoutAttachment);
+							
+							console.log('$scope.onlyCustomFiles---->>>>',$scope.onlyCustomFiles);							
+											
+					};
+					
+					$scope.uploadFiles = function(){													
+					console.log('$scoppe.isLoading before uploading---->>>',$scope.isLoading);
+					console.log('function is called on change');
+					$scope.fileObject = [];		
+					$scope.filesList = [];
+					//var filesListToBeSent = [];
+					var base64String;
+					$scope.allFiles = $scope.fileList;
+					console.log('$scope.fileList---->>>>'+$scope.fileList);
+					$scope.filesList = j$('#multiselect').get(0).files;
+					$scope.max = $scope.allFiles.length;			
+					console.log('filesList------->>>>',$scope.filesList);			
+					var reader;
+					var i =0;					
+					var j;
+					var k;	
+					var description = j$('.attachDesc');
+					console.log('description------->>>>',description);
+					for(i=0;i<$scope.fileList.length;i++){
+						var fileName = $scope.fileList[i].name;
+						$scope.singleFile = i;
+						console.log('fileName',fileName);
+						if(!fileName){
+							console.log('fileName is empty i.e. add record only');																			
+							var customFileWithoutAttachmentObject = {								
+								'attachmentDescription' : description[i].value	
+							};
+							console.log('customFileWithoutAttachmentObject---->>>>',customFileWithoutAttachmentObject);							
+							$scope.createCustomFileEntry(customFileWithoutAttachmentObject);
+							
+						}else{
+							console.log('fileName is present i.e. attachment is added');
+							console.log('description[i].value------>>>>>',description[i].value);
+							var customFileObject = {									
+								'attachmentDescription' : description[i].value
+							};								
+							for(j=0;j<$scope.filesList.length;j++){	
+								if(fileName === $scope.filesList[j].name){
+									$scope.setupReader($scope.filesList[j],customFileObject);
+								}																																					
+							}
+						} 
+					}
+							
+					$scope.fileList = [];	
+					$scope.isSuccessful = true;			
+					console.log('$scoppe.isLoading after uploading---->>>',$scope.isLoading);
+				};
+				
+				
+				
+				$scope.createCustomFileEntry = function(customFileWithoutAttachmentObject){
+					console.log('into the remoting');
+					Visualforce.remoting.Manager.invokeAction(
+							'{!$RemoteAction.customAttachmentCtrl.createCustomFileWithoutAttachment}',
+							angular.toJson(customFileWithoutAttachmentObject),'{!parentId}',
+							function(result,event){
+								if(event.status){
+									console.log('success !!');
+								}else{
+									console.log('result------->>>>',result);
+								}
+								$scope.$apply(function(){
+									$scope.setLoading(false);
+								});
+									
+							},
+								
+								{escape:true}
+						);
+				}
+				  
+						
+				$scope.setupReader = function (file,customFileObject){
+					$scope.setLoading(true);
+					
+					var fileName = file.name;
+					var fileSize = file.size;
+					var fileType = file.type;
+					reader = new FileReader();
+					reader.myFile = file;
+					
+					reader.readAsBinaryString(file);
+					console.log('reader---->>>',reader);
+					
+					reader.onloadend = function(event){
+						
+						
+						if(event.target.readyState === FileReader.DONE){
+							//console.log('event------->>>>',event.target.result);
+							var binaryString = '';
+							binaryString = event.target.result;
+							base64String = window.btoa(event.target.result);
+							//console.log('base64String in onloadend event------->>>>',base64String);
+						
+							//console.log('reader[]------->>>>',reader);
+							var fileObject = { 
+								  'fileName' : fileName,
+								  'fileSize' : fileSize,
+								  'fileType' : fileType.trim(),		
+								  'attachmentBody' : base64String,								 
+								  'attachmentDescription': customFileObject.attachmentDescription,
+
+								 }
+								 $scope.$apply(function(){
+								 	$scope.FileName = file.name;								 
+								 	console.log('$scope.FileName------>>>>>',$scope.FileName);
+								 });								 
+								 console.log('fileObject------>>>>',fileObject);
+							
+						
+						Visualforce.remoting.Manager.invokeAction(
+							'{!$RemoteAction.customAttachmentCtrl.saveAttachment}',
+							angular.toJson(fileObject),'{!parentId}',
+							function(result,event){
+								if(event.status){
+									console.log('success !!');
+								}else{
+									console.log('result------->>>>',result);
+								}
+								$scope.$apply(function(){
+									$scope.setLoading(false);
+								});
+									
+							},
+								
+								{escape:true}
+						);
+								
+						}else{
+							alert('error !!');
+						}
+										
+					}								
+					
+				}
+						
+			});
+			
+		
+		angular.element(document).ready(function(){
+			angular.bootstrap(document.getElementById('ngApp'),['customAttachmentApp']);			
+			console.log('app is created');
+		});		
+		
+	</script>
+</apex:component>

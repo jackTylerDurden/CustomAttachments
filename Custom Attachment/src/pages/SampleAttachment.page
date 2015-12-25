@@ -1,0 +1,19 @@
+<apex:page title="Add Attachment" docType="html-5.0" standardController="Account" sidebar="false" standardStylesheets="false" showHeader="false" >
+	
+	<apex:includeScript value="{!URLFOR($Resource.scripts,'staticResourcesScripts/jquery-2.1.4.js')}"/>
+	<apex:includeScript value="{!URLFOR($Resource.scripts,'staticResourcesScripts/bootstrap.min.js')}"/>	
+	<apex:includeScript value="{!URLFOR($Resource.scripts,'staticResourcesScripts/carouselForForce.js')}"/>
+	<apex:includeScript value="{!URLFOR($Resource.scripts,'staticResourcesScripts/script.js')}"/>
+	<apex:includeScript value="{!URLFOR($Resource.scripts,'staticResourcesScripts/angular.min.js')}"/>	
+
+	<!--<c:ExternalLibraries /> -->
+	
+		<div style="padding-top:15px;">
+			<c:CustomAttachment attachmentParentId="{!$CurrentPage.parameters.id}"/>
+		</div>							
+	
+	
+	<script>	
+		
+	</script>   
+</apex:page>
